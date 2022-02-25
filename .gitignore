@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 
+# Python notebook caches
+notebooks/.ipynb_checkpoints/
+
+
 # C extensions
 *.so
 
