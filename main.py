@@ -37,15 +37,15 @@ if __name__ == '__main__':
     # Specify a folder that comes from one of the trial analysis folder from cheng's task 2c CA1 project
     settings = {
         'activity_type_to_use': 'trace_filt',  # or trace_raw, spikes
-        'n_pos_x_bins': 6,
-        'n_pos_y_bins': 6,
+        'n_pos_x_bins': 30,
+        'n_pos_y_bins': 30,
         'training_size_fraction': 0.6,
         'filter_speed_threshold_cm_per_s': 2.0,
-        'filter_discard_initial_s': 10,
+        'filter_discard_initial_s': 0,
         'output_directory': os.path.join('R:\\calcium_decoding\\analysis', gen_datetimetag())
     }
 
-    IS_MUZZIO_DATA = True
+    IS_MUZZIO_DATA = False
 
     if IS_MUZZIO_DATA:
         #dataset_folder = 'R:\\calcium_decoding\\datasets\\CMG169_CA1_s1_trial_1'
@@ -57,6 +57,7 @@ if __name__ == '__main__':
         ds = load_dataset_muzzio(settings, dataset_folder)
     else:
         dataset_filename = 'R:\calcium_decoding\datasets\kinsky_mouse1_day1_1octagon.mat'
+        #dataset_filename = 'R:\calcium_decoding\datasets\Kinsky_Mouse1_G30_day6_2env180_1octagon.mat'
         dataset_label = dataset_filename
         print('Loading Kinsky Data:', dataset_filename)
 
@@ -65,22 +66,30 @@ if __name__ == '__main__':
     
     dataset.bin_path(settings, ds)
 
-    X_all, y_all, valid_cell_indices = decoder.prepare_model_data(settings, ds)
+    # Prepare the training data
+    X_all, y_all, model_cell_indices = decoder.prepare_model_data(settings, ds)
     X_train, y_train, X_predict, y_true = decoder.split_data(X_all, y_all, settings['training_size_fraction'])
 
     # Create the model (train it)
+    print('Training')
     model = decoder.train(X_train, y_train, ds['arena_size_binned'])
 
+    # These are predictions because they don't decode any data trained on.
+    print('Predicting')
     y_predict, prediction_maps = decoder.predict(model, X_predict)
 
+    # Now decode the entire data so we can see the total performance
+    print('Decoding')
+    X_decode, y_decode_true = decoder.prepare_decoding_data(settings, ds, model_cell_indices)
+    y_decode_predict, decode_maps = decoder.predict(model, X_decode)
 
     # Save the results
+    print('Saving')
     os.makedirs(settings['output_directory'], exist_ok=True)
+    pickle.dump([IS_MUZZIO_DATA, dataset_label, settings, ds, model_cell_indices, X_train, y_train, X_predict, y_true, model, y_predict, prediction_maps, 
+        X_decode, y_decode_true, y_decode_predict, decode_maps], open(os.path.join(settings['output_directory'], 'analysis.p'),  'wb') )
 
-    
-    pickle.dump([IS_MUZZIO_DATA, dataset_label, settings, ds, valid_cell_indices, X_train, y_train, X_predict, y_true, model, y_predict, prediction_maps], open(os.path.join(settings['output_directory'], 'analysis.p'),  'wb') )
-
-    print('Decoding output saved to ', settings['output_directory'])
+    print('Decoder output saved to ', settings['output_directory'])
 
     # # Show the true and predicted bins as a function of time sample
     # plt.figure(figsize=(18, 9))

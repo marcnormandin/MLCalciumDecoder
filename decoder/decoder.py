@@ -41,21 +41,8 @@ from warnings import simplefilter
 from sklearn.exceptions import ConvergenceWarning
 simplefilter("ignore", category=ConvergenceWarning)
 
-def score_data(settings, ds):
-    # Some of the binned samples may be junk, so we need to clean them up while maintaining the data consistency
-    #bad_sample_indices = np.concatenate((ds['pos_x_out_of_bounds_sample_indices'], ds['pos_y_out_of_bounds_sample_indices'],
-    #                                    [index for index, value in enumerate(ds['i_speed_smoothed_cm_per_s']) if value <= 50],
-    #                                    [index for index, value in enumerate(ds['activity_t_ms']) if value <= discard_seconds*1000]))
-    bad_sample_indices = np.concatenate((
-                                         ds['pos_x_out_of_bounds_sample_indices'], 
-                                         ds['pos_y_out_of_bounds_sample_indices'],
-                                         [index for index, value in enumerate(ds['activity_t_ms']) if value <= settings['filter_discard_initial_s']*1000],
-                                         [index for index, value in enumerate(ds['i_speed_smoothed_cm_per_s']) if value <= settings['filter_speed_threshold_cm_per_s']]
-                                         ))
-    bad_sample_indices = np.unique(bad_sample_indices)
-    bad_sample_indices = [int(x) for x in bad_sample_indices]
-    
 
+def score_cell_data(settings, ds):
     # Some of the cells may be junk, so we need to clean them up while maintaining the data consistency
     bad_cell_indices = np.concatenate((
                                         [index for index, value in enumerate(ds['include_cell']) if value == False],
@@ -63,6 +50,39 @@ def score_data(settings, ds):
                                         ))
     bad_cell_indices = np.unique(bad_cell_indices)
     bad_cell_indices = [int(x) for x in bad_cell_indices]
+
+    return bad_cell_indices
+
+def score_position_data(settings, ds):
+    bad_pos_x_indices = ds['pos_x_out_of_bounds_sample_indices']
+    bad_pos_y_indices = ds['pos_y_out_of_bounds_sample_indices']
+
+    bad_pos_indices = np.unique(np.concatenate((bad_pos_x_indices, bad_pos_y_indices)))
+    bad_pos_indices = [int(x) for x in bad_pos_indices]
+
+    return bad_pos_indices
+
+def score_timestamps_data(settings, ds):
+    # Some of the binned samples may be junk, so we need to clean them up while maintaining the data consistency
+
+    # get the bad position data
+    bad_pos_indices = score_position_data(settings, ds)
+
+    bad_sample_indices = np.concatenate((
+                                         bad_pos_indices,
+                                         [index for index, value in enumerate(ds['activity_t_ms']) if value <= settings['filter_discard_initial_s']*1000],
+                                         [index for index, value in enumerate(ds['i_speed_smoothed_cm_per_s']) if value <= settings['filter_speed_threshold_cm_per_s']]
+                                         ))
+    bad_sample_indices = np.unique(bad_sample_indices)
+    bad_sample_indices = [int(x) for x in bad_sample_indices]
+
+    return bad_sample_indices
+
+
+def score_data(settings, ds):
+
+    bad_sample_indices = score_timestamps_data(settings, ds)
+    bad_cell_indices = score_cell_data(settings, ds)
 
     return bad_sample_indices, bad_cell_indices
 
@@ -76,34 +96,19 @@ def prepare_model_data(settings, ds):
     true_bins_linear = ds['pos_xy_binned_linear']
 
     num_original_cells = activity.shape[0]
-    #num_original_time_samples = activity.shape[1]
 
     valid_cell_indices = np.arange(num_original_cells)
-    print('There are the valid cell indices: ', valid_cell_indices)
 
     # We only want to train the decoder on good data
     bad_sample_indices, bad_cell_indices = score_data(settings, ds)
 
-    print(bad_sample_indices)
-    print(bad_cell_indices)
-
-    print('Out of %d total samples, %d will not be used.' %(ds['num_time_samples'], len(bad_sample_indices)))
-    print('Out of %d total cells, %d will not be used.' %(ds['num_neurons'], len(bad_cell_indices)))
-
-
-    print(activity.shape)
-
     if len(bad_sample_indices):
         activity = np.delete(activity, bad_sample_indices, axis = 1) # columns which are the samples
         true_bins_linear = np.delete(true_bins_linear, bad_sample_indices)
-
-    print(activity.shape)
     
     if len(bad_cell_indices):
         activity = np.delete(activity, bad_cell_indices, axis = 0) # rows which are the cell traces
         valid_cell_indices = np.delete(valid_cell_indices, bad_cell_indices)
-
-    print(activity.shape)
 
     X_all = activity.T
     y_all = true_bins_linear
@@ -113,6 +118,43 @@ def prepare_model_data(settings, ds):
     X_all = X_scaler.transform(X_all)
 
     return X_all, y_all, valid_cell_indices
+
+def prepare_decoding_data(settings, ds, model_cell_indices):
+    # This routine returns data prepared for decoding all of the data, not just the unseen data.
+    # We only want to remove the same cells as removed for the model, and bad positional timestamps.
+    # We need to use the same cell indices (cells) as used for the trained model.
+
+    # We will first put the data in the correct dimenions, and then we will extract the segments that correspond to either of two
+    # bin locations
+    # X needs to be (n_samples, n_features)
+    # y needs to be (n_samples, ) <-- second is empty
+    activity = ds['activity']
+    true_bins_linear = ds['pos_xy_binned_linear']
+
+    num_original_cells = activity.shape[0]
+
+    # We only want to train the decoder on good data
+    bad_sample_indices = score_position_data(settings, ds)
+
+    all_cell_indices = np.arange(num_original_cells)
+    bad_cell_indices = [x for x in all_cell_indices if x not in model_cell_indices]
+
+    if len(bad_sample_indices):
+        activity = np.delete(activity, bad_sample_indices, axis = 1) # columns which are the samples
+        true_bins_linear = np.delete(true_bins_linear, bad_sample_indices)
+    
+    if len(bad_cell_indices):
+        activity = np.delete(activity, bad_cell_indices, axis = 0) # rows which are the cell traces
+        #valid_cell_indices = np.delete(valid_cell_indices, bad_cell_indices)
+
+    X_all = activity.T
+    y_all = true_bins_linear
+
+    # Scale the data
+    X_scaler = sk.preprocessing.StandardScaler().fit(X_all)
+    X_all = X_scaler.transform(X_all)
+
+    return X_all, y_all
 
 def split_data(X_all, y_all, training_size_fraction=0.8):
     # Split the data so that we can predict on data that we haven't trained with
