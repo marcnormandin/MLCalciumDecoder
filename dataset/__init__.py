@@ -27,9 +27,24 @@ def bin_path(settings, ds):
     i_pos_x_cm = interp_x(ds['activity_t_ms'])
     i_pos_y_cm = interp_y(ds['activity_t_ms'])
 
+    arena_x_min_cm = np.min(i_pos_x_cm)-1
+    arena_x_max_cm = np.max(i_pos_x_cm)+1
+    arena_y_min_cm = np.min(i_pos_y_cm)-1
+    arena_y_max_cm = np.max(i_pos_y_cm)+1
+
+    ds['arena_width_cm']  = arena_x_max_cm - arena_x_min_cm
+    ds['arena_height_cm'] = arena_y_max_cm - arena_y_min_cm
+    ds['arena_x_min_cm'] = arena_x_min_cm
+    ds['arena_x_max_cm'] = arena_x_max_cm
+    ds['arena_y_min_cm'] = arena_y_min_cm
+    ds['arena_y_max_cm'] = arena_y_max_cm
+    ds['arena_size_cm'] = (ds['arena_height_cm'], ds['arena_width_cm'])
+
+
+
     # Bounds for the arena in the canonical coordinates
-    x_bounds = [0, ds['arena_width_cm']]
-    y_bounds = [0, ds['arena_height_cm']]
+    x_bounds = [ds['arena_x_min_cm'], ds['arena_x_max_cm']]
+    y_bounds = [ds['arena_y_min_cm'], ds['arena_y_max_cm']]
 
     # Bin the position data
     pos_x_binned, pos_x_bin_centers_cm, pos_x_out_of_bounds_sample_indices = util.bin_position(x_bounds,

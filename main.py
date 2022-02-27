@@ -37,8 +37,8 @@ if __name__ == '__main__':
     # Specify a folder that comes from one of the trial analysis folder from cheng's task 2c CA1 project
     settings = {
         'activity_type_to_use': 'trace_filt',  # or trace_raw, spikes
-        'n_pos_x_bins': 30,
-        'n_pos_y_bins': 30,
+        'n_pos_x_bins': 41,
+        'n_pos_y_bins': 18,
         'training_size_fraction': 0.6,
         'filter_speed_threshold_cm_per_s': 2.0,
         'filter_discard_initial_s': 0,
@@ -56,8 +56,8 @@ if __name__ == '__main__':
         
         ds = load_dataset_muzzio(settings, dataset_folder)
     else:
-        dataset_filename = 'R:\calcium_decoding\datasets\kinsky_mouse1_day1_1octagon.mat'
-        #dataset_filename = 'R:\calcium_decoding\datasets\Kinsky_Mouse1_G30_day6_2env180_1octagon.mat'
+        #dataset_filename = 'R:\calcium_decoding\datasets\kinsky_mouse1_day1_1octagon.mat'
+        dataset_filename = 'R:\calcium_decoding\datasets\Kinsky_Mouse1_G30_day6_2env180_1octagon.mat'
         dataset_label = dataset_filename
         print('Loading Kinsky Data:', dataset_filename)
 

@@ -136,9 +136,18 @@ def load_dataset(settings, dataset_folder):
     ds['trace_scores'] = trace_scores
 
     # Should not be hard coded
-    ds['arena_width_cm'] = 30
-    ds['arena_height_cm'] = 30
-    ds['arena_size_cm'] = (ds['arena_height_cm'], ds['arena_width_cm'])
+    # arena_x_min = np.min(ds['pos_x_cm'])
+    # arena_x_max = np.max(ds['pos_x_cm'])
+    # arena_y_min = np.min(ds['pos_y_cm'])
+    # arena_y_max = np.max(ds['pos_y_cm'])
+
+    # ds['arena_width_cm']  = arena_x_max - arena_x_min
+    # ds['arena_height_cm'] = arena_y_max - arena_y_min
+    # ds['arena_x_min_cm'] = arena_x_min
+    # ds['arena_x_max_cm'] = arena_x_max
+    # ds['arena_y_min_cm'] = arena_y_min
+    # ds['arena_y_max_cm'] = arena_y_max
+    # ds['arena_size_cm'] = (ds['arena_height_cm'], ds['arena_width_cm'])
 
     return ds
 

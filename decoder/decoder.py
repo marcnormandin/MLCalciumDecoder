@@ -218,9 +218,18 @@ def train_model_for_two_bins(X_all, y_all, loc_a_lind, loc_b_lind):
     return SVM, score, is_valid
 
 def train(X_train, y_train, arena_size_binned):
-    # Linearize the bin combinations so that we can treat that as objects.
+    # Linearize the bin combinations so that we can treat that as objects. This is the total
+    # number of bins in the 2D binned arena.
     num_linear_bins = arena_size_binned[0] * arena_size_binned[1]
-    linear_bin_combinations = list(itertools.combinations(np.arange(num_linear_bins), 2))
+    #linear_bins_all = np.arange(num_linear_bins)
+    linear_bins_occupied = np.unique(y_train)
+    linear_bin_combinations = list(itertools.combinations(linear_bins_occupied, 2))
+    # Depending on the shape of the environment, many bins will be unoccupied, so we can
+    # find and eliminate calculations for those at this point by binning the data and
+    # seeing which are unoccupied.
+    #[pos_y_binned, pos_x_binned] = np.unravel_index(y_train, arena_size_binned, order='C')
+    #occupancyMap = util.accumulate_map_create(arena_size_binned, pos_x_binned, pos_y_binned, value=1)
+
 
     # Train the models using the training data
     SVM_model = []
