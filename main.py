@@ -43,7 +43,7 @@ if __name__ == '__main__':
         'filter_speed_threshold_cm_per_s': 2.0,
         'filter_discard_initial_s': 0,
         'output_directory': os.path.join('R:\\calcium_decoding\\analysis', gen_datetimetag())
-    }
+    } 
 
     IS_MUZZIO_DATA = False
 
